@@ -1,0 +1,12 @@
+{
+  "name": "splitapp-push-sender",
+  "version": "1.0.0",
+  "description": "Standalone FCM push sender for SplitApp. Runs as a long-lived Node process instead of a Firebase Cloud Function, so it needs no Blaze plan / billing account.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

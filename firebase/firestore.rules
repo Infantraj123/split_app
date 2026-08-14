@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // User profiles: everyone signed in can read (needed to show names),
+    // only admins create/delete accounts; users may update their own profile
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if isAdmin() || isSelf(userId);
+      allow update: if isAdmin() || isSelf(userId);
+      allow delete: if isAdmin();
+    }
+
+    // Groups and membership are managed by admins only
+    match /groups/{groupId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /groupMembers/{memberId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Expenses, shares, settlements and balances: any signed-in user
+    // (the app restricts these to group members)
+    match /expenses/{expenseId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /expenseShares/{shareId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /expenseDeleteRequests/{requestId} {
+      allow read, create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /settlements/{settlementId} {
+      allow read, create, update: if signedIn();
+      // The creator may delete their own settlement while it's still PENDING
+      // (e.g. cancelling a pending request); admins can delete any.
+      allow delete: if isAdmin() ||
+        (signedIn() && resource.data.fromUserId == request.auth.uid && resource.data.status == 'PENDING');
+    }
+
+    match /balances/{balanceId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    // Notifications: only the recipient reads/updates theirs
+    match /notifications/{notificationId} {
+      allow read, update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn();
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if signedIn();
+    }
+  }
+}

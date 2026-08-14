@@ -1,0 +1,4 @@
+
+# Release signing (never commit)
+keystore.properties
+app/splitapp-release.keystore
